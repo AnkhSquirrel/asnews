@@ -1,0 +1,10 @@
+# The image needs only go.mod, tools/feedctl, rules and feeds (see Dockerfile).
+.git
+.github
+.claude
+.vscode
+deploy
+docs
+tools/minifluxcheck
+*.md
+LICENSE
