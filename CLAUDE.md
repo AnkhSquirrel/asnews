@@ -108,6 +108,8 @@ Verified from source, 2.3.3 and main @ c317f84. Details in `docs/research.md`.
   - Types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `build`, `ci`, `perf`, `style`, `revert`.
   - Scopes when useful: `rules`, `feeds`, `feedctl`, `minifluxcheck`, `deploy`, `docs`.
   - Breaking changes: `!` after type/scope and/or a `BREAKING CHANGE:` footer.
+  - One logical change per commit. Split unrelated changes into separate commits, even when they were made together or touch the same file.
+  - Owner edits found uncommitted in the worktree get their own commit.
 - Secrets: never commit `deploy/.env` or API tokens. `MINIFLUX_TOKEN` comes from Miniflux > Settings > API Keys.
 - Publish no host ports. Miniflux is reached only through network-core's nginx; Postgres and RSSHub are not reachable from outside the stack.
 
