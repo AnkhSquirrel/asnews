@@ -1,0 +1,34 @@
+# Server block for network-core's nginx. Paste this inside the `http { }` block of its
+# nginx.conf, then:
+#   docker exec nginx nginx -t && docker exec nginx nginx -s reload
+#
+# Hostname: add to network-core's dnsmasq.conf, then `docker restart dnsmasq`
+# (SIGHUP does not re-read dnsmasq.conf):
+#   address=/devfeed.lan/<Pi static LAN IP>
+#
+# Uses ports 80/443, already published by network-core's nginx; no compose change needed there.
+# The upstream is resolved per request through Docker's embedded DNS on the `proxy` network,
+# so nginx still starts (and serves its other sites) while the devfeed stack is down.
+
+server {
+    listen 80;
+    # Must match MINIFLUX_BASE_URL in deploy/.env.
+    server_name devfeed.lan;
+
+    # TLS: network-core mounts ./certs at /etc/nginx/certs. Once a certificate exists, add
+    #   listen 443 ssl;
+    #   ssl_certificate     /etc/nginx/certs/<cert>.crt;
+    #   ssl_certificate_key /etc/nginx/certs/<cert>.key;
+    # and redirect port 80 to https.
+
+    location / {
+        resolver 127.0.0.11 valid=30s;
+        set $devfeed_upstream http://devfeed-miniflux:8080;
+        proxy_pass $devfeed_upstream;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

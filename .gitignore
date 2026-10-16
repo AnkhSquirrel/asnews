@@ -1,0 +1,29 @@
+# Secrets (deploy/.env.example stays tracked)
+.env
+*.local
+
+# Go build and test output
+/bin/
+/feedctl
+tools/minifluxcheck/minifluxcheck
+*.test
+*.out
+go.work
+go.work.sum
+
+# Miniflux filter.go copied in by tools/minifluxcheck/run.sh
+tools/minifluxcheck/filter/
+
+# VSCodium / VS Code
+.vscode/
+.history/
+*.code-workspace
+*.vsix
+
+# Claude Code local state (CLAUDE.md stays tracked)
+.claude/
+
+# Editors / OS
+*~
+*.swp
+.directory

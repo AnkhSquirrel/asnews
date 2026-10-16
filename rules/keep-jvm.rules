@@ -1,0 +1,20 @@
+# Keep rules for firehose feeds -> per-feed `keep_filter_entry_rules`.
+#
+# Status: starter examples (2026-10-16). The owner will replace and tune these patterns.
+#
+# Applied by `feedctl apply` to every feed in feeds/feeds.opml that carries
+# feedctlKeep="keep-jvm". When a feed has keep rules, entries that match none
+# of them are dropped.
+#
+# NEVER use these as global (user) keep rules. Miniflux merges user and feed
+# keep rules, so a global keep rule would drop every non-JVM entry from every
+# feed (Rust, FOSS, general tech).
+#
+# Block rules run first: "Why I left C# for Kotlin" is blocked even though it
+# matches here.
+#
+# Known false positive: "spring" also matches the season.
+# See rules/cases.tsv.
+
+EntryTitle=(?i)\b(java|jvm|jdk|openjdk|kotlin|scala|groovy|clojure|spring|quarkus|micronaut|helidon|graalvm|gradle|maven|hibernate|jakarta|vert\.x|intellij)\b
+EntryTag=(?i)^(java|jvm|kotlin|scala|clojure|groovy)$

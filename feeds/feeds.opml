@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Feed list: source of truth for `feedctl apply`.
+  - Top-level outlines are Miniflux categories.
+  - feedctlKeep="keep-jvm" applies rules/keep-jvm.rules as per-feed keep rules
+    (use only on firehose feeds; Miniflux ignores the attribute on import).
+  - Run `go run ./tools/feedctl probe` from the Pi before `apply`:
+    several URLs below were not reachable from the research environment.
+-->
+<opml version="2.0">
+  <head>
+    <title>devfeed</title>
+  </head>
+  <body>
+    <outline text="Aggregators">
+      <outline type="rss" text="Hacker News - front page" xmlUrl="https://hnrss.org/frontpage" htmlUrl="https://news.ycombinator.com/"/>
+      <outline type="rss" text="Lobsters" xmlUrl="https://lobste.rs/rss" htmlUrl="https://lobste.rs/"/>
+    </outline>
+
+    <outline text="Firehose">
+      <outline type="rss" text="HN - JVM keywords" feedctlKeep="keep-jvm"
+               xmlUrl="https://hnrss.org/newest?q=Java+OR+Kotlin+OR+JVM+OR+OpenJDK+OR+GraalVM&amp;points=20"
+               htmlUrl="https://news.ycombinator.com/newest"/>
+    </outline>
+
+    <outline text="JVM">
+      <outline type="rss" text="InfoQ - Java" xmlUrl="https://feed.infoq.com/java" htmlUrl="https://www.infoq.com/java/"/>
+      <outline type="rss" text="Inside.java" xmlUrl="https://inside.java/feed.xml" htmlUrl="https://inside.java/"/>
+      <outline type="rss" text="foojay" xmlUrl="https://foojay.io/feed/" htmlUrl="https://foojay.io/"/>
+      <outline type="rss" text="Spring blog" xmlUrl="https://spring.io/blog.atom" htmlUrl="https://spring.io/blog"/>
+      <outline type="rss" text="Lobsters - java" xmlUrl="https://lobste.rs/t/java.rss" htmlUrl="https://lobste.rs/t/java"/>
+      <outline type="rss" text="r/java" xmlUrl="https://www.reddit.com/r/java/.rss" htmlUrl="https://www.reddit.com/r/java/"/>
+    </outline>
+
+    <outline text="Newsletters">
+      <outline type="rss" text="TLDR Web Dev" xmlUrl="https://tldr.tech/api/rss/webdev" htmlUrl="https://tldr.tech/webdev"/>
+      <outline type="rss" text="TLDR DevOps" xmlUrl="https://tldr.tech/api/rss/devops" htmlUrl="https://tldr.tech/devops"/>
+      <outline type="rss" text="TLDR AI" xmlUrl="https://tldr.tech/api/rss/ai" htmlUrl="https://tldr.tech/ai"/>
+      <outline type="rss" text="TLDR InfoSec" xmlUrl="https://tldr.tech/api/rss/infosec" htmlUrl="https://tldr.tech/infosec"/>
+    </outline>
+
+    <outline text="Releases">
+      <outline type="rss" text="Miniflux releases" xmlUrl="https://github.com/miniflux/v2/releases.atom" htmlUrl="https://github.com/miniflux/v2/releases"/>
+      <outline type="rss" text="Spring Boot releases" xmlUrl="https://github.com/spring-projects/spring-boot/releases.atom" htmlUrl="https://github.com/spring-projects/spring-boot/releases"/>
+      <outline type="rss" text="Quarkus releases" xmlUrl="https://github.com/quarkusio/quarkus/releases.atom" htmlUrl="https://github.com/quarkusio/quarkus/releases"/>
+    </outline>
+
+    <outline text="Tech">
+      <outline type="rss" text="LWN headlines" xmlUrl="https://lwn.net/headlines/rss" htmlUrl="https://lwn.net/"/>
+    </outline>
+  </body>
+</opml>

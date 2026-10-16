@@ -1,0 +1,28 @@
+# Global block rules -> Miniflux user setting `block_filter_entry_rules`.
+#
+# Status: starter examples (2026-10-16). The owner will replace and tune these patterns.
+#
+# Format: one `Field=RE2-regex` per line. Fields: EntryTitle, EntryURL,
+# EntryCommentsURL, EntryContent, EntryAuthor, EntryTag, EntryDate.
+# Evaluated in order; the first matching rule blocks the entry, and blocked
+# entries are never stored.
+#
+# Comment lines and blank lines are stripped by `feedctl` before upload.
+# NEVER put a comment on the same line as a rule: Miniflux has no comment
+# syntax, so the comment becomes part of the regex and the rule never matches.
+#
+# Every change here needs matching rows in rules/cases.tsv.
+
+# C# / .NET terms, case-insensitive.
+EntryTitle=(?i)(\bC#|\bdotnet\b|\bASP\.NET\b|\bBlazor\b|\bEntity Framework\b)
+
+# ".NET" and "MAUI", case-sensitive on purpose: does not match
+# "example.net" or "Maui travel guide".
+EntryTitle=(?:^|[\s(/])\.NET\b|\bMAUI\b
+
+# Tags/categories supplied by the source feed (InfoQ categories, Lobsters tags).
+# Miniflux matches this regex against each tag separately, so anchors are safe.
+EntryTag=(?i)^(c#|csharp|dotnet|\.net|asp\.net( core)?|blazor)$
+
+# Microsoft's .NET blog. Path-scoped: devblogs.microsoft.com/java stays.
+EntryURL=(?i)^https?://devblogs\.microsoft\.com/dotnet/

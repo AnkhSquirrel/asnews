@@ -1,0 +1,35 @@
+# Regression cases for the filter rules. Run: go test ./...  or  go run ./tools/feedctl check
+# Status: starter examples (2026-10-16), matching the starter rules; replace them together.
+# Columns (TAB-separated): expect  profile  title  tags  url  note
+#   expect  : keep | block
+#   profile : none (feed without keep rules) | name of a keep-*.rules file (e.g. keep-jvm)
+#   tags    : comma-separated, may be empty
+# Global block rules apply to every profile.
+expect	profile	title	tags	url	note
+block	none	What's new in C# 14			C# in title
+block	none	Announcing .NET 10			.NET at start
+block	none	ASP.NET Core performance improvements
+block	none	Blazor tips for 2026
+block	none	Building apps with .NET MAUI
+block	none	A dotnet CLI trick
+block	none	Weekly roundup	.NET,news		tag match
+block	none	Weekly roundup	dotnet		Lobsters-style tag
+block	none	Performance improvements		https://devblogs.microsoft.com/dotnet/performance-improvements/	.NET blog URL
+keep	none	Java at Microsoft update		https://devblogs.microsoft.com/java/update/	Microsoft Java blog stays
+keep	none	example.net raises seed round			domain, not .NET
+keep	none	Maui travel guide			case-sensitive MAUI
+keep	none	C++26 is feature complete			C++ is not C#
+keep	none	Java 25 released
+keep	none	Rust 1.90 released			profile none keeps non-JVM
+keep	none	JavaScript frameworks in 2026
+keep	none	Weekly roundup	Java,news
+keep	keep-jvm	Java 25 released
+keep	keep-jvm	Spring Boot 4.1 released
+keep	keep-jvm	Vert.x 5 released
+keep	keep-jvm	Gradle 9.2
+keep	keep-jvm	GraalVM native image deep dive
+keep	keep-jvm	Weekly roundup	kotlin		tag keep
+block	keep-jvm	JavaScript frameworks in 2026			\bjava\b does not match JavaScript
+block	keep-jvm	Rust 1.90 released			not JVM
+block	keep-jvm	Why I left C# for Kotlin			block rules run before keep rules
+keep	keep-jvm	Spring cleaning your homelab			KNOWN FALSE POSITIVE (season)
