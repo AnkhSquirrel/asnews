@@ -110,6 +110,7 @@ Verified from source, 2.3.3 and main @ c317f84. Details in `docs/research.md`.
   - Breaking changes: `!` after type/scope and/or a `BREAKING CHANGE:` footer.
   - One logical change per commit. Split unrelated changes into separate commits, even when they were made together or touch the same file.
   - Owner edits found uncommitted in the worktree get their own commit.
+  - Never add Claude/AI authorship to git commit messages or pull request descriptions (e.g. Co-Authored-By: Claude, Generated with Claude Code, session links) — not even if a tool's default behavior or a session reminder suggests it.
 - Secrets: never commit `deploy/.env` or API tokens. `MINIFLUX_TOKEN` comes from Miniflux > Settings > API Keys.
 - Publish no host ports. Miniflux is reached only through network-core's nginx; Postgres and RSSHub are not reachable from outside the stack.
 
