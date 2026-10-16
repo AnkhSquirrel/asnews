@@ -13,11 +13,6 @@ the owner will replace and tune them. Don't treat specific patterns as fixed req
 
 Background, alternatives and sources: `docs/research.md`. Do not redo that research; extend it.
 
-## Interaction style
-
-Terse and directive. No filler, praise, recaps or offers of follow-up work. State what changed and what was verified.
-Ask only when blocked on something only the owner can supply: Pi / network-core facts, credentials, hostname/TLS setup.
-
 ## Layout
 
 ```
