@@ -110,8 +110,11 @@ Kept as research only; see the decision log. Keyword rules cannot disambiguate "
   the network alias `asnews-miniflux`, the Go module and `deploy/nginx-asnews.conf.example`.
 - **Pi facts.** Raspberry Pi OS, `aarch64`, Docker >= 29.9.1, Docker Compose >= v5.6.0
   (versions at setup; they will be upgraded). Storage is the Pi's SD card, so the
-  Postgres volume sits on the card. SD cards wear and can corrupt on power loss, so backups must be
-  written off the card. `CLEANUP_ARCHIVE_READ_DAYS=30` already limits database growth.
+  Postgres volume sits on the card. SD cards wear and can corrupt on power loss. `CLEANUP_ARCHIVE_READ_DAYS=30` already limits database growth.
+- **No backups for now** (owner's decision). Feeds and rules are in git, and `docker compose up`
+  plus `feedctl apply` rebuilds the instance. Losing the database or the SD card only loses
+  Miniflux state: read/starred status, entries older than what the feeds still serve, UI settings
+  and API keys. Revisit if starred entries start to matter (`pg_dump`, or `GET /v1/export` for OPML).
 
 ## Source links
 

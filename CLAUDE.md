@@ -59,6 +59,8 @@ cd deploy && docker compose config --quiet     # validate compose after edits (n
    - network-core's `nginx` proxies by hostname on its existing 80/443 to `http://asnews-miniflux:8080` and terminates TLS (certs in its `./certs`). `dnsmasq` serves the hostname.
    - **No VPN.** asnews never uses network-core's `wireguard`, for ingress or egress: no `network_mode: service:wireguard`, and feeds are fetched directly. Access is from the LAN.
    - No host ports. Other stacks on the Pi publish their own; asnews needs none.
+9. **No backups** (for now). The repo holds everything that matters: `docker compose up` plus `feedctl apply` rebuilds the instance.
+   A lost database or SD card only loses Miniflux state: read/starred status, entries older than what the feeds still serve, UI settings and API keys.
 
 ## Miniflux facts that bite
 
@@ -85,9 +87,9 @@ Verified from source, 2.3.3 and main @ c317f84. Details in `docs/research.md`.
   - **Host facts known:**
     - Raspberry Pi 4, 8 GB RAM, Raspberry Pi OS, `aarch64` (all images used publish arm64), static LAN IP.
     - Docker >= 29.9.1, Docker Compose >= v5.6.0. These are the versions at setup and will be upgraded; never pin to them exactly.
-    - Storage: the Pi's SD card. The Postgres named volume lives in Docker's data root on that card, so there's no separate disk to point it at. SD cards wear and can corrupt on power loss, so backups must leave the card.
+    - Storage: the Pi's SD card. The Postgres named volume lives in Docker's data root on that card, so there's no separate disk to point it at. SD cards wear and can corrupt on power loss; see decision 9 for what a lost card costs.
     - network-core compose: containers `nginx`, `dnsmasq` and `wireguard`, all on the external network `proxy`. TZ Europe/Paris.
-  - **Host facts unknown:** asnews hostname, certificate type in `./certs`, backup destination off the SD card.
+  - **Host facts unknown:** asnews hostname, certificate type in `./certs`.
 
 ## Working rules
 
@@ -122,7 +124,6 @@ Phase 1, deploy:
 4. Run `feedctl probe` on the Pi. Fix or remove dead URLs.
 5. Run `feedctl apply -dry-run`, then `apply`. Trigger a refresh with `PUT /v1/feeds/refresh`. Spot-check that blocked items are absent and that keep-profile feeds hold only kept items.
 6. Enable the Google Reader API (Settings > Integrations) for a mobile client on the LAN.
-7. Backups, written off the SD card: nightly `pg_dump` of the miniflux DB, plus `GET /v1/export` (OPML; includes per-feed rules).
 
 Phase 2, sources and tuning:
 - Replace the starter example rules: after a week of reading, record misses as `cases.tsv` rows, then fix the rules.
