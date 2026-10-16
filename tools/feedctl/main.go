@@ -5,8 +5,10 @@
 //	go run ./tools/feedctl apply  [-url URL] [-rules rules] [-opml feeds/feeds.opml] [-dry-run]
 //	go run ./tools/feedctl probe  [-opml feeds/feeds.opml]
 //
-// apply reads MINIFLUX_TOKEN (Settings > API Keys) and MINIFLUX_URL (the nginx URL; Miniflux
-// publishes no host port) from the environment. There is deliberately no localhost default.
+// apply reads MINIFLUX_URL from the environment: http://miniflux:8080 inside the compose stack,
+// the nginx URL from elsewhere (Miniflux publishes no host port). There is deliberately no
+// localhost default. It authenticates with MINIFLUX_TOKEN (Settings > API Keys) if set,
+// otherwise with MINIFLUX_USERNAME and MINIFLUX_PASSWORD (HTTP basic auth).
 package main
 
 import (
@@ -54,7 +56,8 @@ func usage() {
 	fmt.Fprintln(os.Stderr, `usage:
   feedctl check  [-rules DIR] [-v]                      validate rules, run rules/cases.tsv
   feedctl apply  [-url URL] [-rules DIR] [-opml FILE] [-dry-run]
-                                                        sync rules + feeds to Miniflux (needs MINIFLUX_URL, MINIFLUX_TOKEN)
+                                                        sync rules + feeds to Miniflux (needs MINIFLUX_URL and
+                                                        MINIFLUX_TOKEN, or MINIFLUX_USERNAME + MINIFLUX_PASSWORD)
   feedctl probe  [-opml FILE]                           fetch every feed URL, report HTTP status + feed type`)
 }
 
@@ -145,11 +148,15 @@ func cmdApply(args []string) error {
 	_ = fs.Parse(args)
 
 	if *baseURL == "" {
-		return errors.New("MINIFLUX_URL is not set (the URL network-core's nginx serves asnews on)")
+		return errors.New("MINIFLUX_URL is not set (http://miniflux:8080 in the stack, else the nginx URL)")
 	}
-	token := os.Getenv("MINIFLUX_TOKEN")
-	if token == "" {
-		return errors.New("MINIFLUX_TOKEN is not set (Miniflux: Settings > API Keys)")
+	var client *Client
+	if token := os.Getenv("MINIFLUX_TOKEN"); token != "" {
+		client = NewClient(*baseURL, token)
+	} else if user, pass := os.Getenv("MINIFLUX_USERNAME"), os.Getenv("MINIFLUX_PASSWORD"); user != "" && pass != "" {
+		client = NewBasicClient(*baseURL, user, pass)
+	} else {
+		return errors.New("set MINIFLUX_TOKEN (Miniflux: Settings > API Keys) or MINIFLUX_USERNAME and MINIFLUX_PASSWORD")
 	}
 	rules, err := loadAndTest(*rulesDir, false)
 	if err != nil {
@@ -163,7 +170,7 @@ func cmdApply(args []string) error {
 		return err
 	}
 
-	return runApply(NewClient(*baseURL, token), rules, feeds, *dry, os.Stdout)
+	return runApply(client, rules, feeds, *dry, os.Stdout)
 }
 
 // runApply syncs global rules, imports missing feeds and sets per-feed keep rules.

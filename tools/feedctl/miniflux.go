@@ -15,9 +15,10 @@ import (
 // internal/model (user.go, feed.go) and internal/api/api.go at v2.3.3.
 
 type Client struct {
-	base  string
-	token string
-	http  *http.Client
+	base       string
+	token      string
+	user, pass string
+	http       *http.Client
 }
 
 func NewClient(baseURL, token string) *Client {
@@ -26,6 +27,14 @@ func NewClient(baseURL, token string) *Client {
 		token: token,
 		http:  &http.Client{Timeout: 30 * time.Second},
 	}
+}
+
+// NewBasicClient authenticates with HTTP basic auth (username and password), which the
+// Miniflux API accepts as an alternative to an API key.
+func NewBasicClient(baseURL, user, pass string) *Client {
+	c := NewClient(baseURL, "")
+	c.user, c.pass = user, pass
+	return c
 }
 
 type User struct {
@@ -51,7 +60,11 @@ func (c *Client) do(method, path string, body []byte, contentType string, out an
 	if err != nil {
 		return err
 	}
-	req.Header.Set("X-Auth-Token", c.token)
+	if c.token != "" {
+		req.Header.Set("X-Auth-Token", c.token)
+	} else {
+		req.SetBasicAuth(c.user, c.pass)
+	}
 	req.Header.Set("Accept", "application/json")
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)

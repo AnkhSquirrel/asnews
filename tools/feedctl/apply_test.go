@@ -20,12 +20,22 @@ type fakeMiniflux struct {
 	feeds  []Feed
 	writes []string
 	token  string
+	// Basic auth credentials; accepted alongside the token when set.
+	username, password string
+}
+
+func (f *fakeMiniflux) authorized(r *http.Request) bool {
+	if f.token != "" && r.Header.Get("X-Auth-Token") == f.token {
+		return true
+	}
+	u, p, ok := r.BasicAuth()
+	return ok && f.username != "" && u == f.username && p == f.password
 }
 
 func (f *fakeMiniflux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if r.Header.Get("X-Auth-Token") != f.token {
+	if !f.authorized(r) {
 		http.Error(w, `{"error_message":"access unauthorized"}`, http.StatusUnauthorized)
 		return
 	}
@@ -164,6 +174,19 @@ func TestApplyBadToken(t *testing.T) {
 	srv := httptest.NewServer(&fakeMiniflux{token: "secret"})
 	defer srv.Close()
 	err := runApply(NewClient(srv.URL, "wrong"), Rules{}, nil, true, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "401") {
+		t.Fatalf("want 401 error, got %v", err)
+	}
+}
+
+func TestApplyBasicAuth(t *testing.T) {
+	fake := &fakeMiniflux{username: "admin", password: "pw", user: User{ID: 1, Username: "admin"}}
+	srv := httptest.NewServer(fake)
+	defer srv.Close()
+	if err := runApply(NewBasicClient(srv.URL, "admin", "pw"), Rules{}, nil, true, io.Discard); err != nil {
+		t.Fatalf("basic auth rejected: %v", err)
+	}
+	err := runApply(NewBasicClient(srv.URL, "admin", "wrong"), Rules{}, nil, true, io.Discard)
 	if err == nil || !strings.Contains(err.Error(), "401") {
 		t.Fatalf("want 401 error, got %v", err)
 	}
