@@ -5,6 +5,8 @@ asnews uses two services of the separate `network-core` compose stack: `nginx` (
 over the shared external Docker network `proxy`. network-core also runs `wireguard`; asnews does not use it (no VPN).
 Stack: Miniflux + Postgres (Docker Compose), with filter rules and the feed list versioned in this repo
 and pushed to Miniflux by `feedctl` (Go, stdlib only). No AI/LLM anywhere.
+Fully containerized: CI publishes a `feedctl` image with the rules and feed list built in, and the Pi
+runs `docker compose pull && docker compose up -d --force-recreate` with only `compose.yaml` + `.env`.
 
 Requirement: one reader for RSS, newsletters and aggregators. Exclude unwanted ecosystems everywhere.
 For broad "firehose" feeds, keep only items from followed ecosystems. Everything else of general dev/FOSS/tech interest stays.
@@ -16,7 +18,7 @@ Background, alternatives and sources: `docs/research.md`. Do not redo that resea
 ## Layout
 
 ```
-deploy/compose.yaml                Miniflux 2.3.3 (pinned) + Postgres 18; RSSHub behind profile "rsshub"; joins network-core
+deploy/compose.yaml                Miniflux 2.3.3 (pinned) + Postgres 18 + one-shot feedctl apply; RSSHub behind profile "rsshub"; joins network-core
 deploy/.env.example                copy to deploy/.env (git-ignored)
 deploy/nginx-asnews.conf.example  server block to add to network-core's nginx
 rules/global-block.rules           -> Miniflux user `block_filter_entry_rules` (all feeds)
@@ -24,6 +26,8 @@ rules/keep-*.rules                 -> per-feed `keep_filter_entry_rules`, only o
 rules/cases.tsv                    regression cases: expect, profile, title, tags, url, note
 feeds/feeds.opml                   feed list; top-level outlines = categories
 tools/feedctl/                     check | apply | probe; mirrors Miniflux filter semantics; tests incl. fake-API apply test
+Dockerfile                         feedctl image: binary + rules/ + feeds/; the build runs gofmt, vet and tests
+.github/workflows/feedctl.yml      tests on push/PR; on main publishes ghcr.io/ankhsquirrel/asnews-feedctl (amd64+arm64)
 tools/minifluxcheck/               runs cases.tsv through Miniflux's real filter.go at a tag (separate Go module, Go >= 1.24)
 docs/research.md                   findings, decision log, verified Miniflux internals, source links
 ```
@@ -34,13 +38,24 @@ docs/research.md                   findings, decision log, verified Miniflux int
 go test ./...                                  # must pass before any commit
 go run ./tools/feedctl check -v                # rules + cases table + OPML keep references
 go run ./tools/feedctl probe                   # fetch every feed URL (run on the Pi or a network that reaches them)
-MINIFLUX_URL=... MINIFLUX_TOKEN=... go run ./tools/feedctl apply -dry-run
-MINIFLUX_URL=... MINIFLUX_TOKEN=... go run ./tools/feedctl apply
+MINIFLUX_URL=... MINIFLUX_TOKEN=... go run ./tools/feedctl apply -dry-run   # from outside the stack
+docker build -t ghcr.io/ankhsquirrel/asnews-feedctl:latest .                  # local image (runs the tests)
 tools/minifluxcheck/run.sh [tag]               # after any Miniflux version bump, before changing MINIFLUX_VERSION
 cd deploy && docker compose config --quiet     # validate compose after edits (needs deploy/.env)
 ```
 
-`MINIFLUX_URL` is the nginx URL (Miniflux publishes no host port). `feedctl apply` has no default for it.
+On the Pi (in the directory holding `compose.yaml` and `.env`):
+
+```sh
+docker compose pull && docker compose up -d --force-recreate   # deploy or update; feedctl applies, then exits
+docker compose logs feedctl                                    # what the apply did
+docker compose run --rm --no-deps feedctl probe                # fetch every feed URL
+docker compose run --rm --no-deps feedctl check -v             # rules vs cases, per case
+```
+
+`feedctl apply` has no default `MINIFLUX_URL`. In the stack it is `http://miniflux:8080`; from
+outside, the nginx URL (Miniflux publishes no host port). Auth: `MINIFLUX_TOKEN` if set, else
+`MINIFLUX_USERNAME` + `MINIFLUX_PASSWORD` (the compose service passes the admin credentials from `.env`).
 
 ## Decisions (keep unless new evidence; record changes in docs/research.md)
 
@@ -55,12 +70,13 @@ cd deploy && docker compose config --quiet     # validate compose after edits (n
 6. Newsletters: use native RSS first (TLDR has it). Otherwise hosted kill-the-newsletter.com, or kill-the-news on Cloudflare Workers. Do not run an SMTP receiver on the home Pi (ISPs block port 25).
 7. The Miniflux image is pinned. Bump deliberately: read the release notes (the Miniflux releases feed is subscribed), run `tools/minifluxcheck/run.sh <new-tag>`, then update `MINIFLUX_VERSION`.
 8. Hosting: asnews is its own compose project (`name: asnews`) next to `network-core`.
-   - Only Miniflux joins the external network `proxy`, with alias `asnews-miniflux`. Never put `db` or `rsshub` on `proxy`: their service names could collide with other stacks.
+   - Only Miniflux joins the external network `proxy`, with alias `asnews-miniflux`. Never put `db`, `feedctl` or `rsshub` on `proxy`: their service names could collide with other stacks.
    - network-core's `nginx` proxies by hostname on its existing 80/443 to `http://asnews-miniflux:8080` and terminates TLS (certs in its `./certs`). `dnsmasq` serves the hostname.
    - **No VPN.** asnews never uses network-core's `wireguard`, for ingress or egress: no `network_mode: service:wireguard`, and feeds are fetched directly. Access is from the LAN.
    - No host ports. Other stacks on the Pi publish their own; asnews needs none.
-9. **No backups** (for now). The repo holds everything that matters: `docker compose up` plus `feedctl apply` rebuilds the instance.
+9. **No backups** (for now). The repo holds everything that matters: `docker compose up` (which runs `feedctl apply`) rebuilds the instance.
    A lost database or SD card only loses Miniflux state: read/starred status, entries older than what the feeds still serve, UI settings and API keys.
+10. **Deploy by image.** The Pi has no repo checkout and no Go. Rules and feeds reach it only through the `feedctl` image that CI builds from `main`. The image is public on GHCR; secrets stay in the `.env` on the Pi. Change flow: commit, push, wait for CI, then `pull` + `up --force-recreate` on the Pi. The first live apply on a new instance runs with `FEEDCTL_APPLY_FLAGS=-dry-run`.
 
 ## Miniflux facts that bite
 
@@ -81,9 +97,15 @@ Verified from source, 2.3.3 and main @ c317f84. Details in `docs/research.md`.
   - 27 cases (covering the starter example rules) pass in `feedctl` and through Miniflux's own `filter.go` at 2.3.3 and main, both with comments stripped and with raw files.
   - `apply` tested against a fake API: payloads, import of missing feeds only, dry-run makes no writes, second run makes no writes.
   - Compose (network-core variant) validated with `docker compose config`, with and without profile `rsshub`.
+  - feedctl image builds for amd64 and arm64 (static aarch64 binary); the build runs gofmt, vet and tests.
+  - Live run of the full stack on the workstation (2026-10-16, Miniflux 2.3.3), throwaway:
+    - In-stack `feedctl` with basic auth: dry run, apply, then a second apply with no writes.
+    - Rules stored on the user and on the keep feed as expected.
+    - `probe`: 17/17 feeds OK.
+    - After a refresh, 287 entries; firehose entries all match keep-jvm; no blocked titles.
 - Not done:
-  - **No live Miniflux was run.** The first live `apply` must be `-dry-run`.
-  - **Feed URLs were not fetched.** Lobsters, Spring, Reddit, LWN and GitHub release URLs come from general knowledge; run `probe` on the Pi first.
+  - **Nothing ran on the Pi yet.** The first apply there runs with `FEEDCTL_APPLY_FLAGS=-dry-run`.
+  - **The CI workflow has not run yet**: no GitHub remote. `actionlint` passes on it.
   - **Host facts known:**
     - Raspberry Pi 4, 8 GB RAM, Raspberry Pi OS, `aarch64` (all images used publish arm64), static LAN IP.
     - Docker >= 29.9.1, Docker Compose >= v5.6.0. These are the versions at setup and will be upgraded; never pin to them exactly.
@@ -117,14 +139,19 @@ Verified from source, 2.3.3 and main @ c317f84. Details in `docs/research.md`.
 ## Roadmap
 
 Phase 1, deploy:
-1. Pick the asnews hostname from the names the network-core certificate covers.
-2. Fill `deploy/.env` (incl. `MINIFLUX_BASE_URL`), run `docker compose up -d` (network-core must be up).
-3. In network-core, per `deploy/nginx-asnews.conf.example`:
+1. Create the public GitHub repo, push `main`, and check that the `feedctl` workflow is green.
+   Make sure the `asnews-feedctl` package is Public (package settings, once).
+2. Pick the asnews hostname from the names the network-core certificate covers.
+3. On the Pi, in a directory such as `~/asnews`:
+   - Fetch `deploy/compose.yaml` and `deploy/.env.example` (raw GitHub URLs) and `cp .env.example .env`.
+   - Fill it in (incl. `MINIFLUX_BASE_URL`) and keep `FEEDCTL_APPLY_FLAGS=-dry-run`.
+   - `docker compose pull && docker compose up -d` (network-core must be up), then read `docker compose logs feedctl`.
+   - `docker compose run --rm --no-deps feedctl probe`. Fix dead URLs in the repo, push, pull.
+   - Empty `FEEDCTL_APPLY_FLAGS`, then `docker compose up -d --force-recreate`.
+4. In network-core, per `deploy/nginx-asnews.conf.example`:
    - Paste both server blocks into `nginx.conf`, then `nginx -t` and reload.
    - Add an `address=` line to `dnsmasq.conf`, then restart `dnsmasq`.
-   Then create an API key.
-4. Run `feedctl probe` on the Pi. Fix or remove dead URLs.
-5. Run `feedctl apply -dry-run`, then `apply`. Trigger a refresh with `PUT /v1/feeds/refresh`. Spot-check that blocked items are absent and that keep-profile feeds hold only kept items.
+5. From the LAN, open `https://<host>/` and spot-check that blocked items are absent and that keep-profile feeds hold only kept items.
 6. Enable the Google Reader API (Settings > Integrations) for a mobile client on the LAN.
 
 Phase 2, sources and tuning:

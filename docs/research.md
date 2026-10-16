@@ -115,6 +115,23 @@ Kept as research only; see the decision log. Keyword rules cannot disambiguate "
   plus `feedctl apply` rebuilds the instance. Losing the database or the SD card only loses
   Miniflux state: read/starred status, entries older than what the feeds still serve, UI settings
   and API keys. Revisit if starred entries start to matter (`pg_dump`, or `GET /v1/export` for OPML).
+- **Containerized feedctl, deploy by image** (owner: "asnews well contained", managed like their
+  other services with `docker compose pull` + `up --force-recreate`).
+  - A `Dockerfile` builds `feedctl` (golang:1.22, cross-compiled, distroless static nonroot) with
+    `rules/` and `feeds/` baked in. The build runs gofmt, vet and the tests.
+  - GitHub Actions publishes it to GHCR (`ghcr.io/ankhsquirrel/asnews-feedctl`, public, amd64 +
+    arm64) from `main`. The Pi needs no repo checkout and no Go.
+  - Compose service `feedctl` is one-shot: on every `up` it runs `apply` after Miniflux is healthy,
+    then exits. `FEEDCTL_APPLY_FLAGS=-dry-run` (default in `.env.example`) keeps the first live
+    apply a dry run.
+  - It reaches Miniflux at `http://miniflux:8080` on the stack's private network, not through nginx.
+    That avoids depending on nginx, dnsmasq and certificate trust, and the credentials never leave
+    the stack. It never joins `proxy`.
+  - Auth: HTTP basic auth with the admin credentials from `.env` (the Miniflux API accepts it), so
+    there is no manual API-key step. `MINIFLUX_TOKEN` still takes precedence if set. Changing the
+    admin password in the UI requires updating `.env`.
+  - Verified with a throwaway stack on the workstation: dry run, apply, idempotent second apply,
+    17/17 feeds OK on probe, and filtering correct on 287 live entries.
 
 ## Source links
 
