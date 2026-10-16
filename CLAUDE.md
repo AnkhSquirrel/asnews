@@ -1,8 +1,8 @@
-# devfeed
+# asnews
 
 Centralized developer news, self-hosted on the owner's Raspberry Pi 4 (8 GB) in an existing Docker environment.
-devfeed uses two services of the separate `network-core` compose stack: `nginx` (reverse proxy) and `dnsmasq` (LAN DNS),
-over the shared external Docker network `proxy`. network-core also runs `wireguard`; devfeed does not use it (no VPN).
+asnews uses two services of the separate `network-core` compose stack: `nginx` (reverse proxy) and `dnsmasq` (LAN DNS),
+over the shared external Docker network `proxy`. network-core also runs `wireguard`; asnews does not use it (no VPN).
 Stack: Miniflux + Postgres (Docker Compose), with filter rules and the feed list versioned in this repo
 and pushed to Miniflux by `feedctl` (Go, stdlib only). No AI/LLM anywhere.
 
@@ -18,7 +18,7 @@ Background, alternatives and sources: `docs/research.md`. Do not redo that resea
 ```
 deploy/compose.yaml                Miniflux 2.3.3 (pinned) + Postgres 18; RSSHub behind profile "rsshub"; joins network-core
 deploy/.env.example                copy to deploy/.env (git-ignored)
-deploy/nginx-devfeed.conf.example  server block to add to network-core's nginx
+deploy/nginx-asnews.conf.example  server block to add to network-core's nginx
 rules/global-block.rules           -> Miniflux user `block_filter_entry_rules` (all feeds)
 rules/keep-*.rules                 -> per-feed `keep_filter_entry_rules`, only on OPML feeds tagged feedctlKeep="<name>"
 rules/cases.tsv                    regression cases: expect, profile, title, tags, url, note
@@ -54,10 +54,10 @@ cd deploy && docker compose config --quiet     # validate compose after edits (n
 5. **Filtering is deterministic only. No AI/LLM, now or later** (no classifier, no hosted or local model). Record keyword misses as `KNOWN FALSE POSITIVE` / `KNOWN FALSE NEGATIVE` rows in `cases.tsv`, then fix the rules or accept the miss.
 6. Newsletters: use native RSS first (TLDR has it). Otherwise hosted kill-the-newsletter.com, or kill-the-news on Cloudflare Workers. Do not run an SMTP receiver on the home Pi (ISPs block port 25).
 7. The Miniflux image is pinned. Bump deliberately: read the release notes (the Miniflux releases feed is subscribed), run `tools/minifluxcheck/run.sh <new-tag>`, then update `MINIFLUX_VERSION`.
-8. Hosting: devfeed is its own compose project (`name: devfeed`) next to `network-core`.
-   - Only Miniflux joins the external network `proxy`, with alias `devfeed-miniflux`. Never put `db` or `rsshub` on `proxy`: their service names could collide with other stacks.
-   - network-core's `nginx` proxies by hostname on its existing 80/443 to `http://devfeed-miniflux:8080` and terminates TLS (certs in its `./certs`). `dnsmasq` serves the hostname.
-   - **No VPN.** devfeed never uses network-core's `wireguard`, for ingress or egress: no `network_mode: service:wireguard`, and feeds are fetched directly. Access is from the LAN.
+8. Hosting: asnews is its own compose project (`name: asnews`) next to `network-core`.
+   - Only Miniflux joins the external network `proxy`, with alias `asnews-miniflux`. Never put `db` or `rsshub` on `proxy`: their service names could collide with other stacks.
+   - network-core's `nginx` proxies by hostname on its existing 80/443 to `http://asnews-miniflux:8080` and terminates TLS (certs in its `./certs`). `dnsmasq` serves the hostname.
+   - **No VPN.** asnews never uses network-core's `wireguard`, for ingress or egress: no `network_mode: service:wireguard`, and feeds are fetched directly. Access is from the LAN.
    - No host ports. Other stacks on the Pi publish their own; asnews needs none.
 
 ## Miniflux facts that bite
@@ -85,7 +85,7 @@ Verified from source, 2.3.3 and main @ c317f84. Details in `docs/research.md`.
   - **Host facts known:**
     - Raspberry Pi 4, 8 GB RAM, static LAN IP.
     - network-core compose: containers `nginx`, `dnsmasq` and `wireguard`, all on the external network `proxy`. TZ Europe/Paris.
-  - **Host facts unknown:** CPU arch (`uname -m`; network-core's comments target arm64), Docker/Compose versions, devfeed hostname, certificate type in `./certs`, storage medium (SD/SSD) and location, backup setup.
+  - **Host facts unknown:** CPU arch (`uname -m`; network-core's comments target arm64), Docker/Compose versions, asnews hostname, certificate type in `./certs`, storage medium (SD/SSD) and location, backup setup.
 
 ## Working rules
 
@@ -110,9 +110,9 @@ Verified from source, 2.3.3 and main @ c317f84. Details in `docs/research.md`.
 ## Roadmap
 
 Phase 1, deploy:
-1. Collect the unknown host facts (see Verification status) and pick the devfeed hostname. Adapt the volume to the storage location if needed.
+1. Collect the unknown host facts (see Verification status) and pick the asnews hostname. Adapt the volume to the storage location if needed.
 2. Fill `deploy/.env` (incl. `MINIFLUX_BASE_URL`), run `docker compose up -d` (network-core must be up).
-3. In network-core, per `deploy/nginx-devfeed.conf.example`:
+3. In network-core, per `deploy/nginx-asnews.conf.example`:
    - Paste the server block into `nginx.conf`, then `nginx -t` and reload.
    - Add an `address=` line to `dnsmasq.conf`, then restart `dnsmasq`.
    - Add TLS.

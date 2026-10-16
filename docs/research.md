@@ -7,7 +7,7 @@ Date: 2026-10-15. Prices and features change; re-check before relying on them.
 One place for developer news: RSS feeds, newsletters (e.g. TLDR), aggregators (HN, Lobsters).
 Filtering by interest/language/ecosystem, e.g. exclude C#/.NET, include the Java/JVM ecosystem.
 Host: a Raspberry Pi 4 (8 GB) running Docker. An existing `network-core` compose stack runs
-nginx, dnsmasq and wireguard on the external network `proxy`; devfeed runs as a
+nginx, dnsmasq and wireguard on the external network `proxy`; asnews runs as a
 separate compose project behind that nginx and uses its dnsmasq, but not the VPN.
 
 ## Verdict
@@ -89,15 +89,15 @@ Kept as research only; see the decision log. Keyword rules cannot disambiguate "
 - **No AI/LLM.** Filtering stays deterministic (Miniflux rules managed by `feedctl`). Phase 3
   (semantic classifier) is dropped and `docs/classifier-spec.md` removed. The webhook facts above
   remain as Miniflux internals.
-- **Host and hosting.** Raspberry Pi 4, 8 GB. devfeed is its own compose project next to the
+- **Host and hosting.** Raspberry Pi 4, 8 GB. asnews is its own compose project next to the
   existing `network-core` stack.
   - network-core runs `nginx`, `dnsmasq` and `wireguard`, all on the external network `proxy`,
     created with `docker network create proxy`.
-  - devfeed:
-    - Miniflux joins `proxy` under the alias `devfeed-miniflux`. nginx proxies to it by hostname on
+  - asnews:
+    - Miniflux joins `proxy` under the alias `asnews-miniflux`. nginx proxies to it by hostname on
       the existing 80/443, so network-core's compose needs no change; only `nginx.conf` and
       `dnsmasq.conf` do.
-    - **No VPN** (owner's decision): devfeed never uses `wireguard`, for ingress or egress.
+    - **No VPN** (owner's decision): asnews never uses `wireguard`, for ingress or egress.
       Miniflux fetches feeds directly, and access is from the LAN through nginx + dnsmasq.
     - No host ports are published, replacing an earlier loopback binding that collided with a
       port already published on the Pi.
@@ -106,6 +106,8 @@ Kept as research only; see the decision log. Keyword rules cannot disambiguate "
   - 8 GB RAM leaves room for RSSHub (profile `rsshub`).
 - **Rules are starter examples.** The C#/.NET block rules, the JVM keep profile and their cases
   demonstrate the mechanism; the owner will replace and tune them after real reading.
+- **Codename `asnews`.** Renamed from `devfeed`. This covers the compose project (`name: asnews`),
+  the network alias `asnews-miniflux`, the Go module and `deploy/nginx-asnews.conf.example`.
 
 ## Source links
 

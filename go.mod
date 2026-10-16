@@ -1,3 +1,3 @@
-module devfeed
+module asnews
 
 go 1.22

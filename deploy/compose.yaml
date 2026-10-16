@@ -1,18 +1,18 @@
-# devfeed stack for the Raspberry Pi 4 (8 GB; 64-bit OS recommended).
+# asnews stack for the Raspberry Pi 4 (8 GB; 64-bit OS recommended).
 #   cp .env.example .env && edit .env
 #   docker compose up -d                     # Miniflux + Postgres
 #   docker compose --profile rsshub up -d    # + RSSHub (feeds for sites without RSS)
 #
 # Runs next to the existing network-core stack and uses its nginx and dnsmasq; start that first.
 # No host ports: Miniflux joins network-core's external Docker network `proxy` and the `nginx`
-# container proxies to http://devfeed-miniflux:8080 (see nginx-devfeed.conf.example).
+# container proxies to http://asnews-miniflux:8080 (see nginx-asnews.conf.example).
 # Postgres and RSSHub stay on this stack's private default network.
 # No VPN: never use network-core's wireguard (no network_mode: service:wireguard).
 #
 # Images: miniflux/miniflux publishes amd64, arm64, arm/v7, arm/v6.
 # RSSHub on arm/arm64 ships without puppeteer: routes that need a headless browser fail.
 
-name: devfeed
+name: asnews
 
 services:
   miniflux:
@@ -26,7 +26,7 @@ services:
       proxy:
         # Unique name on the shared network; nginx's upstream.
         aliases:
-          - devfeed-miniflux
+          - asnews-miniflux
     environment:
       DATABASE_URL: postgres://miniflux:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db/miniflux?sslmode=disable
       RUN_MIGRATIONS: "1"

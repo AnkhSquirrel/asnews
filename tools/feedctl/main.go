@@ -145,7 +145,7 @@ func cmdApply(args []string) error {
 	_ = fs.Parse(args)
 
 	if *baseURL == "" {
-		return errors.New("MINIFLUX_URL is not set (the URL network-core's nginx serves devfeed on)")
+		return errors.New("MINIFLUX_URL is not set (the URL network-core's nginx serves asnews on)")
 	}
 	token := os.Getenv("MINIFLUX_TOKEN")
 	if token == "" {
