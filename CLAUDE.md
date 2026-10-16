@@ -89,7 +89,7 @@ Verified from source, 2.3.3 and main @ c317f84. Details in `docs/research.md`.
     - Docker >= 29.9.1, Docker Compose >= v5.6.0. These are the versions at setup and will be upgraded; never pin to them exactly.
     - Storage: the Pi's SD card. The Postgres named volume lives in Docker's data root on that card, so there's no separate disk to point it at. SD cards wear and can corrupt on power loss; see decision 9 for what a lost card costs.
     - network-core compose: containers `nginx`, `dnsmasq` and `wireguard`, all on the external network `proxy`. TZ Europe/Paris.
-  - **Host facts unknown:** asnews hostname, certificate type in `./certs`.
+  - **Host facts unknown:** asnews hostname. It must be a name covered by `certs/fullchain.pem` (`openssl x509 -in certs/fullchain.pem -noout -ext subjectAltName`).
 
 ## Working rules
 
@@ -114,12 +114,11 @@ Verified from source, 2.3.3 and main @ c317f84. Details in `docs/research.md`.
 ## Roadmap
 
 Phase 1, deploy:
-1. Collect the remaining unknown host facts (see Verification status) and pick the asnews hostname.
+1. Pick the asnews hostname from the names the network-core certificate covers.
 2. Fill `deploy/.env` (incl. `MINIFLUX_BASE_URL`), run `docker compose up -d` (network-core must be up).
 3. In network-core, per `deploy/nginx-asnews.conf.example`:
-   - Paste the server block into `nginx.conf`, then `nginx -t` and reload.
+   - Paste both server blocks into `nginx.conf`, then `nginx -t` and reload.
    - Add an `address=` line to `dnsmasq.conf`, then restart `dnsmasq`.
-   - Add TLS.
    Then create an API key.
 4. Run `feedctl probe` on the Pi. Fix or remove dead URLs.
 5. Run `feedctl apply -dry-run`, then `apply`. Trigger a refresh with `PUT /v1/feeds/refresh`. Spot-check that blocked items are absent and that keep-profile feeds hold only kept items.

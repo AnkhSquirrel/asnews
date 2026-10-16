@@ -1,4 +1,4 @@
-# Server block for network-core's nginx. Paste this inside the `http { }` block of its
+# Server blocks for network-core's nginx. Paste these inside the `http { }` block of its
 # nginx.conf, then:
 #   docker exec nginx nginx -t && docker exec nginx nginx -s reload
 #
@@ -7,19 +7,24 @@
 #   address=/asnews.lan/<Pi static LAN IP>
 #
 # Uses ports 80/443, already published by network-core's nginx; no compose change needed there.
+# TLS reuses network-core's certificate. server_name must be
+# one of its names: openssl x509 -in certs/fullchain.pem -noout -ext subjectAltName
 # The upstream is resolved per request through Docker's embedded DNS on the `proxy` network,
 # so nginx still starts (and serves its other sites) while the asnews stack is down.
 
 server {
     listen 80;
-    # Must match MINIFLUX_BASE_URL in deploy/.env.
+    server_name asnews.lan;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    # Must match MINIFLUX_BASE_URL in deploy/.env and be covered by the certificate.
     server_name asnews.lan;
 
-    # TLS: network-core mounts ./certs at /etc/nginx/certs. Once a certificate exists, add
-    #   listen 443 ssl;
-    #   ssl_certificate     /etc/nginx/certs/<cert>.crt;
-    #   ssl_certificate_key /etc/nginx/certs/<cert>.key;
-    # and redirect port 80 to https.
+    ssl_certificate     /etc/nginx/certs/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/privkey.pem;
 
     location / {
         resolver 127.0.0.11 valid=30s;
