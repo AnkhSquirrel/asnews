@@ -1,7 +1,14 @@
 # asnews stack for the Raspberry Pi 4 (8 GB, Raspberry Pi OS, aarch64).
+# Only this file and .env are needed on the Pi; no repo checkout.
 #   cp .env.example .env && edit .env
-#   docker compose up -d                     # Miniflux + Postgres
+#   docker compose pull && docker compose up -d --force-recreate   # Miniflux + Postgres + feedctl apply
 #   docker compose --profile rsshub up -d    # + RSSHub (feeds for sites without RSS)
+#   docker compose logs feedctl              # what the last apply did
+#   docker compose run --rm --no-deps feedctl probe     # are the feed URLs alive?
+#   docker compose run --rm --no-deps feedctl check -v  # rules vs cases, per case
+#
+# Rules and the feed list ship inside the feedctl image, built from main by CI. To change them,
+# commit and push, wait for CI, then pull and up again here.
 #
 # Runs next to the existing network-core stack and uses its nginx and dnsmasq; start that first.
 # No host ports: Miniflux joins network-core's external Docker network `proxy` and the `nginx`
@@ -46,6 +53,23 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+
+  # One-shot: on every `up`, pushes the rules and feed list baked into the image to Miniflux,
+  # then exits. Talks to Miniflux over this stack's private network; never joins `proxy`.
+  feedctl:
+    image: ${FEEDCTL_IMAGE:-ghcr.io/ankhsquirrel/asnews-feedctl:latest}
+    restart: "no"
+    depends_on:
+      miniflux:
+        condition: service_healthy
+    # FEEDCTL_APPLY_FLAGS=-dry-run prints the plan without changing anything.
+    command: apply ${FEEDCTL_APPLY_FLAGS:-}
+    environment:
+      MINIFLUX_URL: http://miniflux:8080
+      # Basic auth with the admin account; MINIFLUX_TOKEN (an API key) takes precedence if set.
+      MINIFLUX_USERNAME: ${MINIFLUX_ADMIN_USERNAME:-admin}
+      MINIFLUX_PASSWORD: ${MINIFLUX_ADMIN_PASSWORD:?set MINIFLUX_ADMIN_PASSWORD in .env}
+      MINIFLUX_TOKEN: ${MINIFLUX_TOKEN:-}
 
   db:
     # Postgres 18 stores data under /var/lib/postgresql (<=17 used .../data).
