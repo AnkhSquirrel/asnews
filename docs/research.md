@@ -108,6 +108,10 @@ Kept as research only; see the decision log. Keyword rules cannot disambiguate "
   demonstrate the mechanism; the owner will replace and tune them after real reading.
 - **Codename `asnews`.** Renamed from `devfeed`. This covers the compose project (`name: asnews`),
   the network alias `asnews-miniflux`, the Go module and `deploy/nginx-asnews.conf.example`.
+- **Pi facts.** Raspberry Pi OS, `aarch64`, Docker >= 29.9.1, Docker Compose >= v5.6.0
+  (versions at setup; they will be upgraded). Storage is the Pi's SD card, so the
+  Postgres volume sits on the card. SD cards wear and can corrupt on power loss, so backups must be
+  written off the card. `CLEANUP_ARCHIVE_READ_DAYS=30` already limits database growth.
 
 ## Source links
 

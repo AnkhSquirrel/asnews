@@ -1,6 +1,6 @@
 # asnews
 
-Centralized developer news, self-hosted on the owner's Raspberry Pi 4 (8 GB) in an existing Docker environment.
+Centralized developer news, self-hosted on the owner's Raspberry Pi 4 (8 GB) running on Raspberry Pi OS in an existing Docker environment.
 asnews uses two services of the separate `network-core` compose stack: `nginx` (reverse proxy) and `dnsmasq` (LAN DNS),
 over the shared external Docker network `proxy`. network-core also runs `wireguard`; asnews does not use it (no VPN).
 Stack: Miniflux + Postgres (Docker Compose), with filter rules and the feed list versioned in this repo
@@ -83,9 +83,11 @@ Verified from source, 2.3.3 and main @ c317f84. Details in `docs/research.md`.
   - **No live Miniflux was run.** The first live `apply` must be `-dry-run`.
   - **Feed URLs were not fetched.** Lobsters, Spring, Reddit, LWN and GitHub release URLs come from general knowledge; run `probe` on the Pi first.
   - **Host facts known:**
-    - Raspberry Pi 4, 8 GB RAM, static LAN IP.
+    - Raspberry Pi 4, 8 GB RAM, Raspberry Pi OS, `aarch64` (all images used publish arm64), static LAN IP.
+    - Docker >= 29.9.1, Docker Compose >= v5.6.0. These are the versions at setup and will be upgraded; never pin to them exactly.
+    - Storage: the Pi's SD card. The Postgres named volume lives in Docker's data root on that card, so there's no separate disk to point it at. SD cards wear and can corrupt on power loss, so backups must leave the card.
     - network-core compose: containers `nginx`, `dnsmasq` and `wireguard`, all on the external network `proxy`. TZ Europe/Paris.
-  - **Host facts unknown:** CPU arch (`uname -m`; network-core's comments target arm64), Docker/Compose versions, asnews hostname, certificate type in `./certs`, storage medium (SD/SSD) and location, backup setup.
+  - **Host facts unknown:** asnews hostname, certificate type in `./certs`, backup destination off the SD card.
 
 ## Working rules
 
@@ -110,7 +112,7 @@ Verified from source, 2.3.3 and main @ c317f84. Details in `docs/research.md`.
 ## Roadmap
 
 Phase 1, deploy:
-1. Collect the unknown host facts (see Verification status) and pick the asnews hostname. Adapt the volume to the storage location if needed.
+1. Collect the remaining unknown host facts (see Verification status) and pick the asnews hostname.
 2. Fill `deploy/.env` (incl. `MINIFLUX_BASE_URL`), run `docker compose up -d` (network-core must be up).
 3. In network-core, per `deploy/nginx-asnews.conf.example`:
    - Paste the server block into `nginx.conf`, then `nginx -t` and reload.
@@ -120,7 +122,7 @@ Phase 1, deploy:
 4. Run `feedctl probe` on the Pi. Fix or remove dead URLs.
 5. Run `feedctl apply -dry-run`, then `apply`. Trigger a refresh with `PUT /v1/feeds/refresh`. Spot-check that blocked items are absent and that keep-profile feeds hold only kept items.
 6. Enable the Google Reader API (Settings > Integrations) for a mobile client on the LAN.
-7. Backups: nightly `pg_dump` of the miniflux DB, plus `GET /v1/export` (OPML; includes per-feed rules).
+7. Backups, written off the SD card: nightly `pg_dump` of the miniflux DB, plus `GET /v1/export` (OPML; includes per-feed rules).
 
 Phase 2, sources and tuning:
 - Replace the starter example rules: after a week of reading, record misses as `cases.tsv` rows, then fix the rules.

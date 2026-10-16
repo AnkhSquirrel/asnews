@@ -1,4 +1,4 @@
-# asnews stack for the Raspberry Pi 4 (8 GB; 64-bit OS recommended).
+# asnews stack for the Raspberry Pi 4 (8 GB, Raspberry Pi OS, aarch64).
 #   cp .env.example .env && edit .env
 #   docker compose up -d                     # Miniflux + Postgres
 #   docker compose --profile rsshub up -d    # + RSSHub (feeds for sites without RSS)
@@ -38,7 +38,7 @@ services:
       BASE_URL: ${MINIFLUX_BASE_URL:?set MINIFLUX_BASE_URL in .env}
       # Minutes between feed refresh cycles (Miniflux default: 60).
       POLLING_FREQUENCY: ${MINIFLUX_POLLING_FREQUENCY:-30}
-      # Keep the database small on SD/SSD storage.
+      # Keep the database small: it lives on the Pi's SD card.
       CLEANUP_ARCHIVE_READ_DAYS: "30"
     healthcheck:
       test: ["CMD", "/usr/bin/miniflux", "-healthcheck", "auto"]
